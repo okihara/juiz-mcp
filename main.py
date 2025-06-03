@@ -4,7 +4,8 @@ from typing import List, Dict, Optional
 from pydantic import BaseModel
 from datetime import datetime
 from sqlalchemy.orm import Session
-from models import TodoItem as DBTodoItem, EventItem as DBEventItem, get_db
+from models import TodoItem as DBTodoItem, EventItem as DBEventItem, GoogleCredentials, get_db
+import os
 
 # Pydanticモデル（APIレスポンス用）
 class TodoItem(BaseModel):
@@ -56,7 +57,7 @@ def echo_prompt(message: str) -> str:
 # TODOを追加するエンドポイント
 @mcp.tool()
 def add_todo(user_id: str, title: str, description: str = None) -> Dict:
-    """TODOアイテムを追加する
+    """TODOアイテムを追加する（Google Tasks連携対応）
     
     Args:
         user_id: ユーザーID
@@ -81,6 +82,14 @@ def add_todo(user_id: str, title: str, description: str = None) -> Dict:
     db.add(db_todo)
     db.commit()
     db.refresh(db_todo)
+    
+    from google_services import get_google_credentials, sync_todo_to_google_tasks
+    creds = get_google_credentials(db, user_id)
+    if creds:
+        try:
+            sync_todo_to_google_tasks(creds, title, description)
+        except Exception as e:
+            print(f"Google Tasks sync failed: {e}")
     
     # Pydanticモデルに変換して返す
     return TodoItem.from_orm(db_todo).dict()
@@ -186,7 +195,7 @@ def update_todo_status(user_id: str, todo_id: int, completed: bool) -> Dict:
 # イベントを追加するエンドポイント
 @mcp.tool()
 def add_event(user_id: str, title: str, start_time: datetime, end_time: datetime, description: str = None, location: str = None) -> Dict:
-    """カレンダーイベントを追加する
+    """カレンダーイベントを追加する（Google Calendar連携対応）
     
     Args:
         user_id: ユーザーID
@@ -217,6 +226,14 @@ def add_event(user_id: str, title: str, start_time: datetime, end_time: datetime
     db.add(db_event)
     db.commit()
     db.refresh(db_event)
+    
+    from google_services import get_google_credentials, sync_event_to_google_calendar
+    creds = get_google_credentials(db, user_id)
+    if creds:
+        try:
+            sync_event_to_google_calendar(creds, title, start_time, end_time, description, location)
+        except Exception as e:
+            print(f"Google Calendar sync failed: {e}")
     
     # Pydanticモデルに変換して返す
     return EventItem.from_orm(db_event).dict()
@@ -283,6 +300,59 @@ def get_all_events(user_id: str, start_date: Optional[datetime] = None, end_date
     
     # Pydanticモデルに変換して返す
     return [EventItem.from_orm(event).dict() for event in events]
+
+@mcp.tool()
+def store_google_credentials(user_id: str, access_token: str, refresh_token: str, token_expiry: datetime = None) -> Dict:
+    """Google認証情報を保存する
+    
+    Args:
+        user_id: ユーザーID
+        access_token: アクセストークン
+        refresh_token: リフレッシュトークン
+        token_expiry: トークン有効期限
+        
+    Returns:
+        保存結果
+    """
+    db = next(get_db())
+    
+    existing_creds = db.query(GoogleCredentials).filter(GoogleCredentials.user_id == user_id).first()
+    
+    if existing_creds:
+        existing_creds.access_token = access_token
+        existing_creds.refresh_token = refresh_token
+        existing_creds.token_expiry = token_expiry
+        existing_creds.updated_at = datetime.now()
+    else:
+        new_creds = GoogleCredentials(
+            user_id=user_id,
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_expiry=token_expiry,
+            created_at=datetime.now()
+        )
+        db.add(new_creds)
+    
+    db.commit()
+    return {"status": "success", "message": "Google credentials stored successfully"}
+
+@mcp.tool()
+def check_google_integration(user_id: str) -> Dict:
+    """ユーザーのGoogle連携状態を確認する
+    
+    Args:
+        user_id: ユーザーID
+        
+    Returns:
+        連携状態
+    """
+    db = next(get_db())
+    creds = db.query(GoogleCredentials).filter(GoogleCredentials.user_id == user_id).first()
+    
+    return {
+        "google_integrated": creds is not None,
+        "last_updated": creds.updated_at.isoformat() if creds else None
+    }
 
 if __name__ == "__main__":
     # Initialize and run the server

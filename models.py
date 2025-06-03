@@ -46,6 +46,17 @@ class EventItem(Base):
     location = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.now)
 
+class GoogleCredentials(Base):
+    __tablename__ = "google_credentials"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, index=True, unique=True)
+    access_token = Column(String, nullable=False)
+    refresh_token = Column(String, nullable=False)
+    token_expiry = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
 # データベースセッションを取得する関数
 def get_db():
     db = SessionLocal()
