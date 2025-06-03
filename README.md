@@ -8,6 +8,7 @@
 - TODOアイテムの一覧表示（全て、完了済み、未完了でフィルタリング可能）
 - TODOアイテムの詳細表示
 - TODOアイテムの完了状態の更新
+- Google カレンダー、Google ToDo との連携
 
 ## 技術スタック
 
@@ -32,6 +33,8 @@ DATABASE_URL=postgres://ua458rg90o90bh:pa2aa8916ddecf284f926e16cd0b191dd8e9af8a6
 ```bash
 pip install -r requirements.txt
 ```
+
+Google連携機能を利用する場合は `google-api-python-client` も必要です。
 
 ### サーバーの起動
 
@@ -101,6 +104,12 @@ psql $DATABASE_URL -c "SELECT * FROM todos WHERE completed = FALSE;"
    - 完了状態: 未完了
    - 作成日時: 2025-05-04 13:32:03
 
+## Google連携
+
+ユーザーIDに紐づくGoogleクレデンシャルを`google_credentials`テーブルから取得します。
+クレデンシャルが存在しない場合は従来通りローカルDBを利用し、存在する場合はGoogle APIを用いて
+GoogleカレンダーやGoogle ToDoへデータを登録します。
+
 ## APIエンドポイント
 
 ### TODOの追加
@@ -133,4 +142,4 @@ def update_todo_status(user_id: str, todo_id: int, completed: bool) -> Dict
 
 ## マイグレーション
 
-このプロジェクトではAlembicを使用してデータベースマイグレーションを管理しています。現在のマイグレーションバージョンは `1dc9901c0158` です。
+このプロジェクトではAlembicを使用してデータベースマイグレーションを管理しています。現在のマイグレーションバージョンは `abcd1234` です。

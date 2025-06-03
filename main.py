@@ -3,8 +3,13 @@ from fastmcp.server import FastMCP
 from typing import List, Dict, Optional
 from pydantic import BaseModel
 from datetime import datetime
-from sqlalchemy.orm import Session
-from models import TodoItem as DBTodoItem, EventItem as DBEventItem, get_db
+import json
+from models import (
+    TodoItem as DBTodoItem,
+    EventItem as DBEventItem,
+    GoogleCredential as DBGoogleCredential,
+    get_db,
+)
 
 # Pydanticモデル（APIレスポンス用）
 class TodoItem(BaseModel):
@@ -53,6 +58,19 @@ def echo_prompt(message: str) -> str:
     """Create an echo prompt"""
     return f"Please process this message: {message}"
 
+
+def _load_google_service(credentials_json: str, api_name: str, api_version: str):
+    """ストアされたクレデンシャルからGoogle APIサービスを構築する。"""
+    try:
+        from google.oauth2.credentials import Credentials
+        from googleapiclient.discovery import build
+    except Exception as exc:  # pragma: no cover - ライブラリがない場合
+        raise RuntimeError("Google API libraries are not installed") from exc
+
+    creds_data = json.loads(credentials_json)
+    creds = Credentials(**creds_data)
+    return build(api_name, api_version, credentials=creds)
+
 # TODOを追加するエンドポイント
 @mcp.tool()
 def add_todo(user_id: str, title: str, description: str = None) -> Dict:
@@ -66,24 +84,34 @@ def add_todo(user_id: str, title: str, description: str = None) -> Dict:
     Returns:
         追加されたTODOアイテム
     """
-    # データベースセッションを取得
     db = next(get_db())
-    
-    # 新しいTODOアイテムを作成
-    db_todo = DBTodoItem(
-        user_id=user_id,
-        title=title,
-        description=description,
-        created_at=datetime.now()
-    )
-    
-    # データベースに追加して保存
-    db.add(db_todo)
-    db.commit()
-    db.refresh(db_todo)
-    
-    # Pydanticモデルに変換して返す
-    return TodoItem.from_orm(db_todo).dict()
+
+    # Googleのクレデンシャルを取得
+    cred = db.query(DBGoogleCredential).filter(DBGoogleCredential.user_id == user_id).first()
+
+    if cred is None:
+        # 未連携の場合はローカルDBに保存
+        db_todo = DBTodoItem(
+            user_id=user_id,
+            title=title,
+            description=description,
+            created_at=datetime.now(),
+        )
+        db.add(db_todo)
+        db.commit()
+        db.refresh(db_todo)
+        return TodoItem.from_orm(db_todo).dict()
+
+    # Google Tasks APIで登録
+    try:
+        service = _load_google_service(cred.credentials_json, "tasks", "v1")
+        body = {"title": title}
+        if description:
+            body["notes"] = description
+        task = service.tasks().insert(tasklist="@default", body=body).execute()
+        return task
+    except Exception as exc:  # ライブラリ不足やAPIエラー
+        return {"error": f"Failed to add Google Task: {exc}"}
 
 # 全てのTODOを取得するエンドポイント
 @mcp.tool()
@@ -199,27 +227,42 @@ def add_event(user_id: str, title: str, start_time: datetime, end_time: datetime
     Returns:
         追加されたイベントアイテム
     """
-    # データベースセッションを取得
     db = next(get_db())
-    
-    # 新しいイベントアイテムを作成
-    db_event = DBEventItem(
-        user_id=user_id,
-        title=title,
-        description=description,
-        start_time=start_time,
-        end_time=end_time,
-        location=location,
-        created_at=datetime.now()
-    )
-    
-    # データベースに追加して保存
-    db.add(db_event)
-    db.commit()
-    db.refresh(db_event)
-    
-    # Pydanticモデルに変換して返す
-    return EventItem.from_orm(db_event).dict()
+
+    cred = db.query(DBGoogleCredential).filter(DBGoogleCredential.user_id == user_id).first()
+
+    if cred is None:
+        db_event = DBEventItem(
+            user_id=user_id,
+            title=title,
+            description=description,
+            start_time=start_time,
+            end_time=end_time,
+            location=location,
+            created_at=datetime.now(),
+        )
+        db.add(db_event)
+        db.commit()
+        db.refresh(db_event)
+        return EventItem.from_orm(db_event).dict()
+
+    try:
+        service = _load_google_service(cred.credentials_json, "calendar", "v3")
+        event_body = {
+            "summary": title,
+            "description": description,
+            "location": location,
+            "start": {"dateTime": start_time.isoformat()},
+            "end": {"dateTime": end_time.isoformat()},
+        }
+        event = (
+            service.events()
+            .insert(calendarId="primary", body=event_body)
+            .execute()
+        )
+        return event
+    except Exception as exc:
+        return {"error": f"Failed to add Google Calendar event: {exc}"}
 
 # 特定のイベントを取得するエンドポイント
 @mcp.tool()

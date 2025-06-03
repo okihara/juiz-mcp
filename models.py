@@ -1,6 +1,6 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, create_engine
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Text, ForeignKey, create_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 import os
 from dotenv import load_dotenv
@@ -44,6 +44,15 @@ class EventItem(Base):
     start_time = Column(DateTime, nullable=False)
     end_time = Column(DateTime, nullable=False)
     location = Column(String, nullable=True)
+    created_at = Column(DateTime, default=datetime.now)
+
+# Google認証情報のデータモデル
+class GoogleCredential(Base):
+    __tablename__ = "google_credentials"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, index=True, unique=True)
+    credentials_json = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.now)
 
 # データベースセッションを取得する関数
