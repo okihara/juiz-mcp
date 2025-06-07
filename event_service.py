@@ -151,15 +151,24 @@ def get_all_events(user_id: str, start_date: Optional[datetime] = None, end_date
                         end_time = datetime.fromisoformat(end_time_str.replace('Z', '+00:00'))
                         
                         # Google Eventを結果に追加
+                        created_at_str = google_event.get('created')
+                        created_at_dt = None
+                        if created_at_str:
+                            try:
+                                created_at_dt = datetime.fromisoformat(created_at_str.replace('Z', '+00:00'))
+                            except ValueError:
+                                print(f"Warning: Could not parse google_event created_at: {created_at_str}")
+                                created_at_dt = None # パース失敗時はNoneにする
+
                         result.append({
                             'id': f"google_{google_event.get('id')}",
                             'user_id': user_id,
                             'title': google_event.get('summary', ''),
                             'description': google_event.get('description', ''),
-                            'start_time': start_time.isoformat(),
-                            'end_time': end_time.isoformat(),
+                            'start_time': start_time, # datetimeオブジェクトとして格納
+                            'end_time': end_time,     # datetimeオブジェクトとして格納
                             'location': google_event.get('location', ''),
-                            'created_at': google_event.get('created'),
+                            'created_at': created_at_dt, # パースされたdatetimeオブジェクトまたはNone
                             'source': 'google_calendar',
                             'google_event_id': google_event.get('id')
                         })
