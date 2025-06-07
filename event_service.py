@@ -1,9 +1,19 @@
 from typing import List, Dict, Optional
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from sqlalchemy.orm import Session
 from models import EventItem as DBEventItem, get_db
 from schemas import EventItem
 from google_api import get_google_calendar_service
+
+
+def _to_rfc3339_utc(dt: Optional[datetime]) -> Optional[str]:
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        # naive datetimeはローカルタイムゾーン（Asia/Tokyo）と仮定
+        dt = dt.replace(tzinfo=timezone(timedelta(hours=9)))
+    return dt.astimezone(timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z')
+
 
 
 def add_event(user_id: str, title: str, start_time: datetime, end_time: datetime, description: str = None, location: str = None, sync_to_google: bool = True) -> Dict:
@@ -114,28 +124,17 @@ def get_all_events(user_id: str, start_date: Optional[datetime] = None, end_date
             calendar_service = get_google_calendar_service(user_id, db)
             if calendar_service:
                 # Google Calendarからイベントを取得
-                events_request = calendar_service.events().list(calendarId='primary')
+                request_params = {'calendarId': 'primary'}
                 
-                # 日付範囲でフィルタリング
-                if start_date:
-                    events_request = calendar_service.events().list(
-                        calendarId='primary',
-                        timeMin=start_date.isoformat() + 'Z'
-                    )
-                if end_date:
-                    if start_date:
-                        events_request = calendar_service.events().list(
-                            calendarId='primary',
-                            timeMin=start_date.isoformat() + 'Z',
-                            timeMax=end_date.isoformat() + 'Z'
-                        )
-                    else:
-                        events_request = calendar_service.events().list(
-                            calendarId='primary',
-                            timeMax=end_date.isoformat() + 'Z'
-                        )
+                time_min_val = _to_rfc3339_utc(start_date)
+                if time_min_val:
+                    request_params['timeMin'] = time_min_val
                 
-                google_events = events_request.execute()
+                time_max_val = _to_rfc3339_utc(end_date)
+                if time_max_val:
+                    request_params['timeMax'] = time_max_val
+                
+                google_events = calendar_service.events().list(**request_params).execute()
                 
                 for google_event in google_events.get('items', []):
                     # 開始時刻と終了時刻を解析
