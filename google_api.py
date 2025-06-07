@@ -11,54 +11,49 @@ import json
 def get_google_credentials(user_id: str, db: Session) -> Optional[Credentials]:
     """データベースからGoogleクレデンシャルを取得してCredentialsオブジェクトを作成"""
     cred_record = db.query(GoogleCredentials).filter(GoogleCredentials.user_id == user_id).first()
-    if not cred_record:
+    if not cred_record or not cred_record.token_json:
         return None
     
-    # Credentialsオブジェクトを作成
-    creds = Credentials(
-        token=cred_record.access_token,
-        refresh_token=cred_record.refresh_token,
-        token_uri=cred_record.token_uri,
-        client_id=cred_record.client_id,
-        client_secret=cred_record.client_secret,
-        scopes=json.loads(cred_record.scopes)
-    )
+    try:
+        info = json.loads(cred_record.token_json)
+        creds = Credentials.from_authorized_user_info(info)
+    except json.JSONDecodeError:
+        # TODO: エラーログを出すなど検討
+        return None
     
     # トークンが期限切れの場合は更新
     if creds.expired and creds.refresh_token:
-        creds.refresh(Request())
-        # 更新されたトークンをデータベースに保存
-        cred_record.access_token = creds.token
-        if creds.expiry:
-            cred_record.expiry = creds.expiry
-        db.commit()
+        try:
+            creds.refresh(Request())
+            # 更新されたトークンをデータベースに保存
+            cred_record.token_json = creds.to_json()
+            cred_record.updated_at = datetime.now()
+            db.commit()
+        except Exception as e:
+            # TODO: トークンリフレッシュ失敗時のエラーハンドリングを検討
+            print(f"Failed to refresh token for user {user_id}: {e}") # 例: ログ出力
+            pass # エラーがあっても、元のcredsで試みる場合もある
     
     return creds
 
 
 def save_google_credentials(user_id: str, creds: Credentials, db: Session):
     """Googleクレデンシャルをデータベースに保存"""
-    # 既存のクレデンシャルを検索
     cred_record = db.query(GoogleCredentials).filter(GoogleCredentials.user_id == user_id).first()
     
+    token_data_json = creds.to_json() # CredentialsオブジェクトをJSON文字列に変換
+
     if cred_record:
         # 既存のレコードを更新
-        cred_record.access_token = creds.token
-        cred_record.refresh_token = creds.refresh_token
-        cred_record.expiry = creds.expiry
+        cred_record.token_json = token_data_json
         cred_record.updated_at = datetime.now()
     else:
         # 新しいレコードを作成
         cred_record = GoogleCredentials(
             user_id=user_id,
-            access_token=creds.token,
-            refresh_token=creds.refresh_token,
-            token_uri=creds.token_uri,
-            client_id=creds.client_id,
-            client_secret=creds.client_secret,
-            scopes=json.dumps(creds.scopes),
-            expiry=creds.expiry,
-            created_at=datetime.now()
+            token_json=token_data_json,
+            created_at=datetime.now(),
+            updated_at=datetime.now()
         )
         db.add(cred_record)
     
@@ -179,30 +174,36 @@ def check_google_credentials(user_id: str) -> Dict:
         from models import get_db
         
         db = next(get_db())
-        cred_record = db.query(GoogleCredentials).filter(GoogleCredentials.user_id == user_id).first()
+        creds = get_google_credentials(user_id, db)
         
-        if not cred_record:
+        if not creds:
             return {
                 "connected": False,
-                "message": "No Google credentials found for this user"
+                "message": "No Google credentials found or they are invalid for this user"
             }
         
-        # クレデンシャルが有効かどうかを確認
-        creds = get_google_credentials(user_id, db)
-        if creds:
+        # created_at と updated_at を取得するために再度DB問い合わせ（credsオブジェクトには含まれないため）
+        cred_meta_info = db.query(GoogleCredentials.created_at, GoogleCredentials.updated_at).filter(GoogleCredentials.user_id == user_id).first()
+
+        if cred_meta_info:
             return {
                 "connected": True,
                 "user_id": user_id,
-                "scopes": json.loads(cred_record.scopes),
-                "created_at": cred_record.created_at.isoformat(),
-                "updated_at": cred_record.updated_at.isoformat(),
+                "scopes": creds.scopes, # Credentialsオブジェクトからscopesを取得
+                "created_at": cred_meta_info.created_at.isoformat() if cred_meta_info.created_at else None,
+                "updated_at": cred_meta_info.updated_at.isoformat() if cred_meta_info.updated_at else None,
                 "message": "Google credentials are valid and connected"
             }
         else:
+            # credsはあるがメタ情報がない場合 (通常は起こり得ないが念のため)
             return {
-                "connected": False,
-                "message": "Google credentials found but invalid or expired"
+                "connected": True, # creds自体は有効なのでconnectedはTrueとする
+                "user_id": user_id,
+                "scopes": creds.scopes,
+                "created_at": None,
+                "updated_at": None,
+                "message": "Google credentials are valid, but metadata (created/updated dates) is missing."
             }
             
     except Exception as e:
-        return {"error": f"Failed to check credentials: {str(e)}"}
+        return {"error": f"Failed to check Google credentials: {str(e)}"}

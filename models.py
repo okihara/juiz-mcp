@@ -48,17 +48,11 @@ class EventItem(Base):
 
 # Googleクレデンシャルのデータモデル
 class GoogleCredentials(Base):
-    __tablename__ = "google_credentials"
+    __tablename__ = "credentials"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, index=True, unique=True)
-    access_token = Column(String, nullable=False)
-    refresh_token = Column(String, nullable=True)
-    token_uri = Column(String, nullable=False)
-    client_id = Column(String, nullable=False)
-    client_secret = Column(String, nullable=False)
-    scopes = Column(String, nullable=False)  # JSON文字列として保存
-    expiry = Column(DateTime, nullable=True)
+    user_id = Column(String(255), nullable=False, unique=True, index=True)
+    token_json = Column(String, nullable=False)  # Google OAuthのトークン情報をJSON文字列として保存
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
