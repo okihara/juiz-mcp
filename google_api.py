@@ -15,10 +15,19 @@ def get_google_credentials(user_id: str, db: Session) -> Optional[Credentials]:
         return None
     
     try:
-        info = json.loads(cred_record.token_json)
-        creds = Credentials.from_authorized_user_info(info)
+        credentials_dict = json.loads(cred_record.token_json)
+        # 認証情報の復元
+        creds = Credentials(
+            token=credentials_dict['token'],
+            refresh_token=credentials_dict['refresh_token'],
+            token_uri=credentials_dict['token_uri'],
+            client_id=credentials_dict['client_id'],
+            client_secret=credentials_dict['client_secret'],
+            scopes=credentials_dict['scopes']
+        )
     except json.JSONDecodeError:
         # TODO: エラーログを出すなど検討
+        print(f"Failed to decode token_json for user {user_id}")
         return None
     
     # トークンが期限切れの場合は更新
