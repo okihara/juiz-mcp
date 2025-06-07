@@ -7,7 +7,6 @@ import os
 # Import service modules
 from todo_service import add_todo, get_all_todos, get_todo, update_todo_status
 from event_service import add_event, get_event, get_all_events
-from google_api import start_google_oauth, complete_google_oauth, check_google_credentials
 
 # Create an MCP server
 mcp = FastMCP("Todo")
@@ -140,53 +139,6 @@ def get_all_events_endpoint(user_id: str, start_date: Optional[datetime] = None,
         イベントアイテムのリスト
     """
     return get_all_events(user_id, start_date, end_date, include_google_calendar)
-
-
-# Google OAuth関連のエンドポイント
-@mcp.tool()
-def start_google_oauth_endpoint(user_id: str, client_id: str, client_secret: str, redirect_uri: str = "urn:ietf:wg:oauth:2.0:oob") -> Dict:
-    """Google OAuth認証フローを開始する
-    
-    Args:
-        user_id: ユーザーID
-        client_id: Google OAuth クライアントID
-        client_secret: Google OAuth クライアントシークレット
-        redirect_uri: リダイレクトURI
-        
-    Returns:
-        認証URL
-    """
-    return start_google_oauth(user_id, client_id, client_secret, redirect_uri)
-
-
-@mcp.tool()
-def complete_google_oauth_endpoint(user_id: str, client_id: str, client_secret: str, auth_code: str, redirect_uri: str = "urn:ietf:wg:oauth:2.0:oob") -> Dict:
-    """Google OAuth認証フローを完了し、クレデンシャルを保存する
-    
-    Args:
-        user_id: ユーザーID
-        client_id: Google OAuth クライアントID
-        client_secret: Google OAuth クライアントシークレット
-        auth_code: 認証コード
-        redirect_uri: リダイレクトURI
-        
-    Returns:
-        認証結果
-    """
-    return complete_google_oauth(user_id, client_id, client_secret, auth_code, redirect_uri)
-
-
-@mcp.tool()
-def check_google_credentials_endpoint(user_id: str) -> Dict:
-    """ユーザーのGoogleクレデンシャルの状態を確認する
-    
-    Args:
-        user_id: ユーザーID
-        
-    Returns:
-        クレデンシャルの状態
-    """
-    return check_google_credentials(user_id)
 
 
 if __name__ == "__main__":
