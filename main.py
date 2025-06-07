@@ -126,7 +126,7 @@ def get_event_endpoint(user_id: str, event_id: int) -> Dict:
 
 
 @mcp.tool()
-def get_all_events_endpoint(user_id: str, start_date: Optional[datetime] = None, end_date: Optional[datetime] = None, include_google_calendar: bool = True) -> List[Dict]:
+def get_all_events_endpoint(user_id: str, start_date: datetime, end_date: Optional[datetime] = None, include_google_calendar: bool = True) -> List[Dict]:
     """ユーザーの全てのイベントアイテムを取得する
     
     Args:
