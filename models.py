@@ -46,6 +46,16 @@ class EventItem(Base):
     location = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.now)
 
+# Googleクレデンシャルのデータモデル
+class GoogleCredentials(Base):
+    __tablename__ = "credentials"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String(255), nullable=False, unique=True, index=True)
+    token_json = Column(String, nullable=False)  # Google OAuthのトークン情報をJSON文字列として保存
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
 # データベースセッションを取得する関数
 def get_db():
     db = SessionLocal()
