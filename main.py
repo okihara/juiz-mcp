@@ -93,7 +93,15 @@ def update_todo_status_endpoint(user_id: str, todo_id: int, completed: bool) -> 
 
 # イベント関連のエンドポイント
 @mcp.tool()
-def add_event_endpoint(user_id: str, title: str, start_time: str, end_time: str = None, description: str = None, location: str = None, sync_to_google: bool = True) -> Dict:
+def add_event_endpoint(
+    user_id: str, 
+    title: str, 
+    start_time: str, 
+    end_time: str | None = None,
+    description: str | None = None, 
+    location: str | None = None, 
+    sync_to_google: bool = True
+) -> Dict:
     """カレンダーイベントを追加する
     
     Args:
