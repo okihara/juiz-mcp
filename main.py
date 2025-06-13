@@ -93,14 +93,14 @@ def update_todo_status_endpoint(user_id: str, todo_id: int, completed: bool) -> 
 
 # イベント関連のエンドポイント
 @mcp.tool()
-def add_event_endpoint(user_id: str, title: str, start_time: str, end_time: str, description: str = None, location: str = None, sync_to_google: bool = True) -> Dict:
+def add_event_endpoint(user_id: str, title: str, start_time: str, end_time: str = None, description: str = None, location: str = None, sync_to_google: bool = True) -> Dict:
     """カレンダーイベントを追加する
     
     Args:
         user_id: ユーザーID
         title: イベントのタイトル
         start_time: 開始日時 (ISO形式文字列: YYYY-MM-DDTHH:MM:SS)
-        end_time: 終了日時 (ISO形式文字列: YYYY-MM-DDTHH:MM:SS)
+        end_time: 終了日時 (ISO形式文字列: YYYY-MM-DDTHH:MM:SS, オプション)
         description: イベントの詳細説明（オプション）
         location: 場所（オプション）
         sync_to_google: Google CalendarAPIとの同期を行うかどうか
@@ -110,7 +110,9 @@ def add_event_endpoint(user_id: str, title: str, start_time: str, end_time: str,
     """
     # Convert string datetimes to datetime objects
     start_dt = datetime.fromisoformat(start_time)
-    end_dt = datetime.fromisoformat(end_time)
+    end_dt = None
+    if end_time:
+        end_dt = datetime.fromisoformat(end_time)
     return add_event(user_id, title, start_dt, end_dt, description, location, sync_to_google)
 
 

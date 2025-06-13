@@ -16,11 +16,15 @@ def _to_rfc3339_utc(dt: Optional[datetime]) -> Optional[str]:
 
 
 
-def add_event(user_id: str, title: str, start_time: datetime, end_time: datetime, description: str = None, location: str = None, sync_to_google: bool = True) -> Dict:
+def add_event(user_id: str, title: str, start_time: datetime, end_time: datetime = None, description: str = None, location: str = None, sync_to_google: bool = True) -> Dict:
     """カレンダーイベントを追加する"""
     # データベースセッションを取得
     db = next(get_db())
     
+    # end_timeが指定されていない場合は、start_timeから1時間後に設定
+    if end_time is None:
+        end_time = start_time + timedelta(hours=1)
+        
     # 新しいイベントアイテムを作成
     db_event = DBEventItem(
         user_id=user_id,
