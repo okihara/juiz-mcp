@@ -93,14 +93,14 @@ def update_todo_status_endpoint(user_id: str, todo_id: int, completed: bool) -> 
 
 # イベント関連のエンドポイント
 @mcp.tool()
-def add_event_endpoint(user_id: str, title: str, start_time: datetime, end_time: datetime, description: str = None, location: str = None, sync_to_google: bool = True) -> Dict:
+def add_event_endpoint(user_id: str, title: str, start_time: str, end_time: str, description: str = None, location: str = None, sync_to_google: bool = True) -> Dict:
     """カレンダーイベントを追加する
     
     Args:
         user_id: ユーザーID
         title: イベントのタイトル
-        start_time: 開始日時
-        end_time: 終了日時
+        start_time: 開始日時 (ISO形式文字列: YYYY-MM-DDTHH:MM:SS)
+        end_time: 終了日時 (ISO形式文字列: YYYY-MM-DDTHH:MM:SS)
         description: イベントの詳細説明（オプション）
         location: 場所（オプション）
         sync_to_google: Google CalendarAPIとの同期を行うかどうか
@@ -108,7 +108,10 @@ def add_event_endpoint(user_id: str, title: str, start_time: datetime, end_time:
     Returns:
         追加されたイベントアイテム
     """
-    return add_event(user_id, title, start_time, end_time, description, location, sync_to_google)
+    # Convert string datetimes to datetime objects
+    start_dt = datetime.fromisoformat(start_time)
+    end_dt = datetime.fromisoformat(end_time)
+    return add_event(user_id, title, start_dt, end_dt, description, location, sync_to_google)
 
 
 @mcp.tool()
@@ -126,19 +129,22 @@ def get_event_endpoint(user_id: str, event_id: int) -> Dict:
 
 
 @mcp.tool()
-def get_all_events_endpoint(user_id: str, start_date: datetime, end_date: Optional[datetime] = None, include_google_calendar: bool = True) -> List[Dict]:
+def get_all_events_endpoint(user_id: str, start_date: str, end_date: Optional[str] = None, include_google_calendar: bool = True) -> List[Dict]:
     """ユーザーの全てのイベントアイテムを取得する
     
     Args:
         user_id: ユーザーID
-        start_date: この日時以降のイベントをフィルター（オプション）
-        end_date: この日時以前のイベントをフィルター（オプション）
+        start_date: この日時以降のイベントをフィルター (ISO形式文字列: YYYY-MM-DDTHH:MM:SS)
+        end_date: この日時以前のイベントをフィルター (ISO形式文字列: YYYY-MM-DDTHH:MM:SS, オプション)
         include_google_calendar: Google Calendarからのイベントも含めるかどうか
     
     Returns:
         イベントアイテムのリスト
     """
-    return get_all_events(user_id, start_date, end_date, include_google_calendar)
+    # Convert string datetimes to datetime objects
+    start_dt = datetime.fromisoformat(start_date)
+    end_dt = datetime.fromisoformat(end_date) if end_date else None
+    return get_all_events(user_id, start_dt, end_dt, include_google_calendar)
 
 
 if __name__ == "__main__":
