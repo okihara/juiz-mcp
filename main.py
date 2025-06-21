@@ -32,38 +32,36 @@ def echo_prompt(message: str) -> str:
 
 # TODO関連のエンドポイント
 @mcp.tool()
-def add_todo_endpoint(user_id: str, title: str, description: str = None, sync_to_google: bool = True) -> Dict:
-    """TODOアイテムを追加する
+def add_todo_endpoint(user_id: str, title: str, description: str = None) -> Dict:
+    """Google TasksにTODOアイテムを追加する
     
     Args:
         user_id: ユーザーID
         title: TODOのタイトル
         description: TODOの詳細説明（オプション）
-        sync_to_google: GoogleタスクAPIとの同期を行うかどうか
         
     Returns:
         追加されたTODOアイテム
     """
-    return add_todo(user_id, title, description, sync_to_google)
+    return add_todo(user_id, title, description)
 
 
 @mcp.tool()
-def get_all_todos_endpoint(user_id: str, filter_status: str = "all", include_google_tasks: bool = True) -> List[Dict]:
-    """ユーザーの全てのTODOアイテムを取得する
+def get_all_todos_endpoint(user_id: str, filter_status: str = "all") -> List[Dict]:
+    """ユーザーの全てのTODOアイテムをGoogle Tasksから取得する
     
     Args:
         user_id: ユーザーID
         filter_status: フィルターオプション。'completed'または'active'を指定可能
-        include_google_tasks: Google Tasksからのタスクも含めるかどうか
     
     Returns:
         TODOアイテムのリスト
     """
-    return get_all_todos(user_id, filter_status, include_google_tasks)
+    return get_all_todos(user_id, filter_status)
 
 
 @mcp.tool()
-def get_todo_endpoint(user_id: str, todo_id: int) -> Dict:
+def get_todo_endpoint(user_id: str, todo_id: str) -> Dict:
     """指定されたIDのTODOアイテムを取得する
     
     Args:
@@ -77,7 +75,7 @@ def get_todo_endpoint(user_id: str, todo_id: int) -> Dict:
 
 
 @mcp.tool()
-def update_todo_status_endpoint(user_id: str, todo_id: int, completed: bool) -> Dict:
+def update_todo_status_endpoint(user_id: str, todo_id: str, completed: bool) -> Dict:
     """TODOの完了状態を更新する
     
     Args:
