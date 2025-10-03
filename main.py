@@ -123,13 +123,13 @@ def add_event_endpoint(
 
 
 @mcp.tool()
-def get_event_endpoint(user_id: str, event_id: int) -> Dict:
-    """指定されたIDのイベントアイテムを取得する
-    
+def get_event_endpoint(user_id: str, event_id: str) -> Dict:
+    """指定されたIDのイベントアイテムをGoogle Calendarから取得する
+
     Args:
         user_id: ユーザーID
-        event_id: 取得するイベントのID
-        
+        event_id: 取得するイベントのID（Google Calendar イベントID）
+
     Returns:
         イベントアイテム
     """
