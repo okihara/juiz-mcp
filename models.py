@@ -22,30 +22,6 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
-# TODOアイテムのデータモデル
-class TodoItem(Base):
-    __tablename__ = "todos"
-
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, index=True)
-    title = Column(String, index=True)
-    description = Column(String, nullable=True)
-    completed = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.now)
-
-# イベントアイテムのデータモデル
-class EventItem(Base):
-    __tablename__ = "events"
-
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(String, index=True)
-    title = Column(String, index=True)
-    description = Column(String, nullable=True)
-    start_time = Column(DateTime, nullable=False)
-    end_time = Column(DateTime, nullable=False)
-    location = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.now)
-
 # Googleクレデンシャルのデータモデル
 class GoogleCredentials(Base):
     __tablename__ = "credentials"
