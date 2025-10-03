@@ -134,6 +134,8 @@ def get_all_events(user_id: str, start_date: datetime, end_date: Optional[dateti
             if time_max_val:
                 request_params['timeMax'] = time_max_val
 
+            print(f"[get_all_events] user_id: {user_id}, time_min: {time_min_val}, time_max: {time_max_val}")
+
             google_events = calendar_service.events().list(**request_params).execute()
 
             # 取得したイベント数をログ出力
