@@ -124,7 +124,7 @@ def get_all_events(user_id: str, start_date: datetime, end_date: Optional[dateti
         calendar_service = get_google_calendar_service(user_id, db)
         if calendar_service:
             # Google Calendarからイベントを取得
-            request_params = {'calendarId': 'primary'}
+            request_params = {'calendarId': 'primary', 'maxResults': 10, 'singleEvents': True}
 
             time_min_val = _to_rfc3339_utc(start_date)
             if time_min_val:
