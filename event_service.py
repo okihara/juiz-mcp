@@ -136,15 +136,24 @@ def get_all_events(user_id: str, start_date: datetime, end_date: Optional[dateti
 
             google_events = calendar_service.events().list(**request_params).execute()
 
+            # 取得したイベント数をログ出力
+            items = google_events.get('items', [])
+            print(f"[get_all_events] user_id: {user_id}, fetched {len(items)} events from Google Calendar")
+
             for google_event in google_events.get('items', []):
                 # 開始時刻と終了時刻が存在するイベントのみ追加
                 if google_event.get('start', {}).get('dateTime') and google_event.get('end', {}).get('dateTime'):
-                    result.append(_create_event_dict(google_event, user_id))
+                    event_dict = _create_event_dict(google_event, user_id)
+                    result.append(event_dict)
+                    # 各イベントの詳細をログ出力
+                    print(f"[get_all_events] event: {event_dict.get('title')} | start: {event_dict.get('start_time')} | end: {event_dict.get('end_time')}")
     except Exception as e:
         # Google API呼び出しでエラーが発生した場合、ログに記録するが処理は継続
         print(f"Google Calendar API error: {e}")
 
     # 開始時刻でソート
     result.sort(key=lambda x: x.get('start_time') or datetime.min)
+
+    print(f"[get_all_events] Returning {len(result)} events after filtering and sorting")
 
     return result
