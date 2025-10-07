@@ -85,9 +85,13 @@ def add_event(user_id: str, title: str, start_time: datetime, end_time: datetime
             ).execute()
 
             return _create_event_dict(result, user_id)
-        return {"error": "Google Calendar service not available"}
+        print(f"[ERROR] Google Calendar service not available for user {user_id}")
+        return {"error": "Google Calendar service not available (authentication may be expired)"}
     except Exception as e:
-        return {"error": f"Google Calendar API error: {e}"}
+        print(f"[ERROR] Google Calendar API error for user {user_id}: {type(e).__name__}: {e}")
+        if hasattr(e, 'resp') and e.resp:
+            print(f"[ERROR] API Response: status={e.resp.status}, reason={e.resp.reason}")
+        return {"error": f"Google Calendar API error: {type(e).__name__}: {e}"}
 
 
 def get_event(user_id: str, event_id: str) -> Dict:
@@ -108,9 +112,13 @@ def get_event(user_id: str, event_id: str) -> Dict:
             ).execute()
 
             return _create_event_dict(google_event, user_id)
-        return {"error": "Google Calendar service not available"}
+        print(f"[ERROR] Google Calendar service not available for user {user_id}")
+        return {"error": "Google Calendar service not available (authentication may be expired)"}
     except Exception as e:
-        return {"error": f"Event with ID {event_id} not found: {e}"}
+        print(f"[ERROR] Failed to get event {event_id} for user {user_id}: {type(e).__name__}: {e}")
+        if hasattr(e, 'resp') and e.resp:
+            print(f"[ERROR] API Response: status={e.resp.status}, reason={e.resp.reason}")
+        return {"error": f"Event with ID {event_id} not found: {type(e).__name__}: {e}"}
 
 
 def get_all_events(user_id: str, start_date: datetime, end_date: Optional[datetime] = None, include_google_calendar: bool = True) -> List[Dict]:
@@ -151,7 +159,9 @@ def get_all_events(user_id: str, start_date: datetime, end_date: Optional[dateti
                     print(f"[get_all_events] event: {event_dict.get('title')} | start: {event_dict.get('start_time')} | end: {event_dict.get('end_time')}")
     except Exception as e:
         # Google API呼び出しでエラーが発生した場合、ログに記録するが処理は継続
-        print(f"Google Calendar API error: {e}")
+        print(f"[ERROR] Google Calendar API error in get_all_events for user {user_id}: {type(e).__name__}: {e}")
+        if hasattr(e, 'resp') and e.resp:
+            print(f"[ERROR] API Response: status={e.resp.status}, reason={e.resp.reason}")
 
     # 開始時刻でソート
     result.sort(key=lambda x: x.get('start_time') or datetime.min)

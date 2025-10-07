@@ -25,9 +25,9 @@ def get_google_credentials(user_id: str, db: Session) -> Optional[Credentials]:
             client_secret=credentials_dict['client_secret'],
             scopes=credentials_dict['scopes']
         )
-    except json.JSONDecodeError:
-        # TODO: エラーログを出すなど検討
-        print(f"Failed to decode token_json for user {user_id}")
+    except json.JSONDecodeError as e:
+        print(f"[ERROR] Failed to decode token_json for user {user_id}: {e}")
+        print(f"[ERROR] Invalid JSON content: {cred_record.token_json[:100]}...")  # 最初の100文字のみ表示
         return None
     
     # トークンが期限切れの場合は更新
@@ -39,9 +39,11 @@ def get_google_credentials(user_id: str, db: Session) -> Optional[Credentials]:
             cred_record.updated_at = datetime.now()
             db.commit()
         except Exception as e:
-            # TODO: トークンリフレッシュ失敗時のエラーハンドリングを検討
-            print(f"Failed to refresh token for user {user_id}: {e}") # 例: ログ出力
-            pass # エラーがあっても、元のcredsで試みる場合もある
+            print(f"[ERROR] Failed to refresh token for user {user_id}: {type(e).__name__}: {e}")
+            print(f"[ERROR] Token expiry: {creds.expiry}")
+            print(f"[ERROR] Has refresh token: {bool(creds.refresh_token)}")
+            # 期限切れトークンをそのまま返すとAPIコールでエラーになるのでNoneを返す
+            return None
     
     return creds
 
@@ -74,15 +76,25 @@ def get_google_calendar_service(user_id: str, db: Session):
     """Google Calendar APIサービスを取得"""
     creds = get_google_credentials(user_id, db)
     if not creds:
+        print(f"[WARNING] No valid credentials found for user {user_id}")
         return None
     
-    return build('calendar', 'v3', credentials=creds)
+    try:
+        return build('calendar', 'v3', credentials=creds)
+    except Exception as e:
+        print(f"[ERROR] Failed to build Google Calendar service for user {user_id}: {type(e).__name__}: {e}")
+        return None
 
 
 def get_google_tasks_service(user_id: str, db: Session):
     """Google Tasks APIサービスを取得"""
     creds = get_google_credentials(user_id, db)
     if not creds:
+        print(f"[WARNING] No valid credentials found for user {user_id}")
         return None
     
-    return build('tasks', 'v1', credentials=creds)
+    try:
+        return build('tasks', 'v1', credentials=creds)
+    except Exception as e:
+        print(f"[ERROR] Failed to build Google Tasks service for user {user_id}: {type(e).__name__}: {e}")
+        return None
