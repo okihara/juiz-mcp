@@ -151,11 +151,11 @@ def get_all_events(user_id: str, start_date: datetime, end_date: Optional[dateti
             print(f"[get_all_events] user_id: {user_id}, fetched {len(items)} events from Google Calendar")
 
             for google_event in google_events.get('items', []):
+                event_dict = _create_event_dict(google_event, user_id)
                 print(f"[get_all_events] event: {event_dict.get('title')} | start: {event_dict.get('start_time')} | end: {event_dict.get('end_time')}")
 
                 # 開始時刻と終了時刻が存在するイベントのみ追加
                 if google_event.get('start', {}).get('dateTime') and google_event.get('end', {}).get('dateTime'):
-                    event_dict = _create_event_dict(google_event, user_id)
                     result.append(event_dict)
 
     except Exception as e:
