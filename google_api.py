@@ -12,6 +12,7 @@ def get_google_credentials(user_id: str, db: Session) -> Optional[Credentials]:
     """データベースからGoogleクレデンシャルを取得してCredentialsオブジェクトを作成"""
     cred_record = db.query(GoogleCredentials).filter(GoogleCredentials.user_id == user_id).first()
     if not cred_record or not cred_record.token_json:
+        print(f"[ERROR] No valid credentials found for user {user_id}")
         return None
     
     try:
