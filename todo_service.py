@@ -1,6 +1,6 @@
 from typing import List, Dict
 from models import get_db
-from google_api import get_google_tasks_service
+from google_api import get_google_tasks_service, AuthenticationRequiredException
 
 
 def _get_default_tasklist_id(tasks_service) -> str:
@@ -52,6 +52,14 @@ def add_todo(user_id: str, title: str, description: str = None) -> Dict:
                 return _create_task_dict(result, user_id)
         print(f"[ERROR] Google Tasks service not available for user {user_id}")
         return {"error": "Google Tasks service not available (authentication may be expired)"}
+    except AuthenticationRequiredException as e:
+        # 認証エラーの場合は、ユーザーに再認証を促すメッセージを返す
+        print(f"[ERROR] Authentication required for user {user_id}: {e}")
+        return {
+            "error": "authentication_required",
+            "message": str(e),
+            "action": "re-authenticate"
+        }
     except Exception as e:
         print(f"[ERROR] Google Tasks API error for user {user_id}: {type(e).__name__}: {e}")
         if hasattr(e, 'resp') and e.resp:
@@ -85,6 +93,14 @@ def get_all_todos(user_id: str, filter_status: str = "all") -> List[Dict]:
                     
                     # Google Taskを結果に追加
                     result.append(_create_task_dict(google_task, user_id))
+    except AuthenticationRequiredException as e:
+        # 認証エラーの場合は、ユーザーに再認証を促すメッセージを返す
+        print(f"[ERROR] Authentication required for user {user_id}: {e}")
+        return [{
+            "error": "authentication_required",
+            "message": str(e),
+            "action": "re-authenticate"
+        }]
     except Exception as e:
         # Google API呼び出しでエラーが発生した場合、ログに記録するが処理は継続
         print(f"[ERROR] Google Tasks API error in get_all_todos for user {user_id}: {type(e).__name__}: {e}")
@@ -116,6 +132,14 @@ def get_todo(user_id: str, todo_id: str) -> Dict:
                 return _create_task_dict(google_task, user_id)
         print(f"[ERROR] Google Tasks service not available for user {user_id}")
         return {"error": "Google Tasks service not available (authentication may be expired)"}
+    except AuthenticationRequiredException as e:
+        # 認証エラーの場合は、ユーザーに再認証を促すメッセージを返す
+        print(f"[ERROR] Authentication required for user {user_id}: {e}")
+        return {
+            "error": "authentication_required",
+            "message": str(e),
+            "action": "re-authenticate"
+        }
     except Exception as e:
         print(f"[ERROR] Failed to get todo {todo_id} for user {user_id}: {type(e).__name__}: {e}")
         if hasattr(e, 'resp') and e.resp:
@@ -150,6 +174,14 @@ def update_todo_status(user_id: str, todo_id: str, completed: bool) -> Dict:
                 return _create_task_dict(updated_task, user_id)
         print(f"[ERROR] Google Tasks service not available for user {user_id}")
         return {"error": "Google Tasks service not available (authentication may be expired)"}
+    except AuthenticationRequiredException as e:
+        # 認証エラーの場合は、ユーザーに再認証を促すメッセージを返す
+        print(f"[ERROR] Authentication required for user {user_id}: {e}")
+        return {
+            "error": "authentication_required",
+            "message": str(e),
+            "action": "re-authenticate"
+        }
     except Exception as e:
         print(f"[ERROR] Failed to update todo {todo_id} for user {user_id}: {type(e).__name__}: {e}")
         if hasattr(e, 'resp') and e.resp:

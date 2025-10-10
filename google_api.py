@@ -5,7 +5,13 @@ from models import GoogleCredentials
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
+from google.auth.exceptions import RefreshError
 import json
+
+
+class AuthenticationRequiredException(Exception):
+    """Googleの再認証が必要な場合に発生する例外"""
+    pass
 
 
 def get_google_credentials(user_id: str, db: Session) -> Optional[Credentials]:
@@ -39,11 +45,16 @@ def get_google_credentials(user_id: str, db: Session) -> Optional[Credentials]:
             cred_record.token_json = creds.to_json()
             cred_record.updated_at = datetime.now()
             db.commit()
+        except RefreshError as e:
+            print(f"[ERROR] RefreshError for user {user_id}: {e}")
+            print(f"[ERROR] Token has been expired or revoked. Re-authentication required.")
+            # RefreshErrorの場合は再認証が必要
+            raise AuthenticationRequiredException(f"Google認証の有効期限が切れています。再度認証を行ってください。")
         except Exception as e:
             print(f"[ERROR] Failed to refresh token for user {user_id}: {type(e).__name__}: {e}")
             print(f"[ERROR] Token expiry: {creds.expiry}")
             print(f"[ERROR] Has refresh token: {bool(creds.refresh_token)}")
-            # 期限切れトークンをそのまま返すとAPIコールでエラーになるのでNoneを返す
+            # その他のエラーの場合もNoneを返す
             return None
     
     return creds

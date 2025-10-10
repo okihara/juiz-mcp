@@ -1,7 +1,7 @@
 from typing import List, Dict, Optional
 from datetime import datetime, timezone, timedelta
 from models import get_db
-from google_api import get_google_calendar_service
+from google_api import get_google_calendar_service, AuthenticationRequiredException
 
 
 def _to_rfc3339_utc(dt: Optional[datetime]) -> Optional[str]:
@@ -87,6 +87,14 @@ def add_event(user_id: str, title: str, start_time: datetime, end_time: datetime
             return _create_event_dict(result, user_id)
         print(f"[ERROR] Google Calendar service not available for user {user_id}")
         return {"error": "Google Calendar service not available (authentication may be expired)"}
+    except AuthenticationRequiredException as e:
+        # 認証エラーの場合は、ユーザーに再認証を促すメッセージを返す
+        print(f"[ERROR] Authentication required for user {user_id}: {e}")
+        return {
+            "error": "authentication_required",
+            "message": str(e),
+            "action": "re-authenticate"
+        }
     except Exception as e:
         print(f"[ERROR] Google Calendar API error for user {user_id}: {type(e).__name__}: {e}")
         if hasattr(e, 'resp') and e.resp:
@@ -114,6 +122,14 @@ def get_event(user_id: str, event_id: str) -> Dict:
             return _create_event_dict(google_event, user_id)
         print(f"[ERROR] Google Calendar service not available for user {user_id}")
         return {"error": "Google Calendar service not available (authentication may be expired)"}
+    except AuthenticationRequiredException as e:
+        # 認証エラーの場合は、ユーザーに再認証を促すメッセージを返す
+        print(f"[ERROR] Authentication required for user {user_id}: {e}")
+        return {
+            "error": "authentication_required",
+            "message": str(e),
+            "action": "re-authenticate"
+        }
     except Exception as e:
         print(f"[ERROR] Failed to get event {event_id} for user {user_id}: {type(e).__name__}: {e}")
         if hasattr(e, 'resp') and e.resp:
@@ -158,8 +174,16 @@ def get_all_events(user_id: str, start_date: datetime, end_date: Optional[dateti
                 if google_event.get('start', {}).get('dateTime') and google_event.get('end', {}).get('dateTime'):
                     result.append(event_dict)
 
+    except AuthenticationRequiredException as e:
+        # 認証エラーの場合は、ユーザーに再認証を促すメッセージを返す
+        print(f"[ERROR] Authentication required for user {user_id}: {e}")
+        return [{
+            "error": "authentication_required",
+            "message": str(e),
+            "action": "re-authenticate"
+        }]
     except Exception as e:
-        # Google API呼び出しでエラーが発生した場合、ログに記録するが処理は継続
+        # その他のGoogle API呼び出しでエラーが発生した場合、ログに記録するが処理は継続
         print(f"[ERROR] Google Calendar API error in get_all_events for user {user_id}: {type(e).__name__}: {e}")
         if hasattr(e, 'resp') and e.resp:
             print(f"[ERROR] API Response: status={e.resp.status}, reason={e.resp.reason}")
