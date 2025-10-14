@@ -1,5 +1,7 @@
 from typing import List, Dict, Optional
 from datetime import datetime, timezone, timedelta
+
+from google.auth.exceptions import RefreshError
 from models import get_db
 from google_api import get_google_calendar_service, AuthenticationRequiredException
 
@@ -177,6 +179,14 @@ def get_all_events(user_id: str, start_date: datetime, end_date: Optional[dateti
     except AuthenticationRequiredException as e:
         # 認証エラーの場合は、ユーザーに再認証を促すメッセージを返す
         print(f"[ERROR] Authentication required for user {user_id}: {e}")
+        return [{
+            "error": "authentication_required",
+            "message": str(e),
+            "action": "re-authenticate"
+        }]
+    except RefreshError as e:
+        # 認証エラーの場合は、ユーザーに再認証を促すメッセージを返す
+        print(f"[ERROR] RefreshError for user {user_id}: {e}")
         return [{
             "error": "authentication_required",
             "message": str(e),
